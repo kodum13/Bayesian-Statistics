@@ -1,0 +1,241 @@
+---
+title: "HW3"
+author: "Kara Odum"
+date: "February 1, 2020"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, warning=FALSE}
+library(magrittr)
+library(knitr)
+library(kableExtra)
+```
+
+15a)
+$n=10$
+$Y=2$\
+$Prior -> P(\theta) \sim Beta(1,1)$\
+$Likelihood -> P(Y | \theta) \sim Binomial(n, \theta)$\
+$Posterior -> P(\theta | Y) \sim Beta(A,B)$
+```{r}
+A = 3
+B = 9
+Mean = A /(A+B)
+stan_dev = sqrt(A*B)/((A+B)*sqrt(A+B+1))
+# Results from distribution characteristics
+Mean
+stan_dev
+
+# Monte Carlo Sampling
+theta <- rbeta(10000, A, B)
+mean(theta)
+sd(theta)
+```
+15b)
+$\alpha = .05$\
+$Credible\ interval (\tau, .95+\tau)$
+```{r}
+# Equal tailed credible intervals
+interval <- qbeta(c(.025,.975),A,B)
+Lower_bound = interval[1]
+Upper_bound = interval[2]
+Lower_bound
+Upper_bound
+
+# Highest density posterior credible interval
+tau <- seq(0, .05, .001)
+width <- qbeta(.95+tau, A, B) -  qbeta(tau,A,B)
+plot(tau, width, main = "HPD Interval Options from 0 to 0.5", xlab="Tau", ylab="Width")
+
+# Find the tau that creates the shortest interval
+min_tau <- tau[which.min(width)]
+min_tau
+
+hpd <- qbeta(c(min_tau, min_tau+.95), A, B)
+hpd
+
+# Plot the posterior with the credible intervals
+theta <- seq(0, 1, .001)
+plot(theta, dbeta(theta, A, B), xlab="Theta", ylab="Posterior", main="Posterior PDF with Credible Interval")
+abline(v=Lower_bound, col=4, lwd=3)
+abline(v=Upper_bound, col=4, lwd=3)
+abline(v=hpd[1], col=5, lwd=3)
+abline(v=hpd[2], col=5, lwd=3)
+legend("topright", c("Equal tails", "HPD"), col=4:5, lty=1, lwd=3)
+
+```
+\
+15c)
+Monte Carlo Sampling for probability that one will survive
+```{r}
+n <- 10000
+# Uncertainty with theta
+theta <- rbeta(n, A, B)
+# Prediction for number of trees to survive based on theta
+Y <- rbinom(n, 10, theta)
+Y_scaled <- table(Y)/n
+plot(Y_scaled, xlab="Y (# survived)", ylab="PPD", main="Posterior Predictive Probability of Survival")
+
+```
+
+17a)
+n = # of shot attempts\
+Y = # of shots made\
+$Prior -> \theta \sim Beta(1,1)$\
+$Likelihood -> Y|\theta \sim Binomial(n,\theta)$\
+$Posterior -> \theta|Y \sim Beta(Y+1, n-Y+1)$\
+The prior is a uniform distribution with the model as a binomial. The model is calculating
+the probability of making a clutch shot given the number of clutch shots made previously.
+
+17b)
+```{r}
+Y <- c(64,72,55,27,75,24,28,66,40,13)
+n <- c(75,95,63,39,83,26,41,82,54,16)
+q <- c(0.845,0.847,0.880,0.674,0.909,0.898,0.770,0.801,0.802,0.875)
+player <- c("RW","JH","KL","LBJ","IT","SC","GA","JW","AD","KD")
+
+# Plot the posterior of the clutch success probabilities
+theta <- seq(0,1,0.001)
+plot(NA, xlim=c(0,1), ylim=c(0,15), xlab="Theta", ylab="Posterior", main="Posterior Clutch Success")
+
+for(i in 1:length(player)){
+  lines(theta,dbeta(theta,Y[i]+1,n[i]-Y[i]+1),col=i)
+}
+
+legend("topleft", inset=c(.1,.1), player, lty=1,col=1:10, ncol=2)
+
+```
+17c)
+```{r}
+# Summarize posterior in a table
+param_alpha <- Y+1
+param_b <- n-Y+1
+median <- qbeta(0.5, param_alpha, param_b)
+lower <- qbeta(0.025, param_alpha, param_b)
+upper <- qbeta(0.975, param_alpha, param_b)
+
+stat_output <- cbind(median, lower, upper)
+rownames(stat_output) <- player
+
+#output <- kable(out, digits=2)
+#kableExtra::column_spec(output, 2:4, border_left = T, border_right = T)
+
+kable(stat_output, digits=2) %>%
+  kable_styling()
+```
+
+17d)
+Find players with different clutch percentages
+$Prob(\theta<q | Y)$\
+$\theta = clutch\ proportion$\
+$q = regular\ proportion$\
+Shows that JH has a greater than 95% probability of having a worse clutch success probability than normal.
+```{r}
+prob_worse <- pbeta(q, param_alpha, param_b)
+names(prob_worse) <- player
+kable(t(prob_worse), digits=3) %>%
+  kable_styling()
+```
+17e)
+Changes in the prior slightly affect the posterior with some players showing more changes than others.
+```{r}
+original <- pbeta(q, Y+1, n-Y+1)
+names(original) <- player
+lowest_param <- pbeta(q,Y+0.25,n-Y+0.25)
+lower_param <- pbeta(q,Y+0.5,n-Y+0.5)
+higher_param <- pbeta(q,Y+2,n-Y+2)
+highest_param <- pbeta(q,Y+10,n-Y+10)
+  
+comparison <- rbind(lowest_param, lower_param, original, higher_param, highest_param)
+rownames(comparison) <- c("Beta(.25)", "Beta(.5)", "Original", "Beta(2)", "Beta(10)")
+kable(comparison, digits=2) %>% kable_styling()
+```  
+18a)
+n = 1000
+Y = 3\
+$P(\theta_m) = .23/1000$\
+$P(\theta_h) = 3.24/1000$\
+$Prior -> P(Hamilton) \sim Beta(1,1)$\
+$Model -> P(Y|Hamilton) \sim Binonmial(n, \theta_h)$ 
+
+```{r}
+# Probability that Hamilton wrote a paper with 3 counts of upon
+theta_h <- 3.24/1000
+theta_m <- .23/1000
+prior <- 1/2
+Y = 3
+n = 1000
+theta <- c(theta_h, theta_m)
+likelihood <- theta^Y*(1-theta)^(n-Y) 
+denom <- prior*likelihood[1] + (1-prior)*likelihood[2]
+
+posterior <- likelihood[1]*prior / denom
+posterior
+
+```
+18b)
+One assumption that is unreasonable is that the prior probability that Hamiton wrote a paper is .5 since Hamilton wrote 51 papers compared to Madison writing 14.
+
+18c)
+If the number of instances of upon was changed to 1, I would expect the posterior probability to decrease since then it would be more likely that Madison wrote the paper. 
+
+```{r}
+# Probability that Hamilton wrote a paper with 1 count of upon
+theta_h <- 3.24/1000
+theta_m <- .23/1000
+prior <- 1/2
+Y = 1 # changed from 3
+n = 1000
+theta <- c(theta_h, theta_m)
+likelihood <- theta^Y*(1-theta)^(n-Y) 
+denom <- prior*likelihood[1] + (1-prior)*likelihood[2]
+
+posterior <- likelihood[1]*prior / denom
+posterior
+
+```
+18d)
+If the text length was changed to 10,000 and the instances of upn was 30 then the proportion would still be similar to the 3.24 instances in 1000 words so the posterior probability would be similar.
+```{r}
+# Probability that Hamilton wrote a paper with 1 count of upon
+theta_h <- 3.24/1000
+theta_m <- .23/1000
+prior <- 1/2
+Y = 30 # changed from 3
+n = 10000 # changed from 1000
+theta <- c(theta_h, theta_m)
+likelihood <- theta^Y*(1-theta)^(n-Y) 
+denom <- prior*likelihood[1] + (1-prior)*likelihood[2]
+
+posterior <- likelihood[1]*prior / denom
+posterior
+
+```
+18e)
+```{r}
+# Probability that Hamilton wrote a paper with Y={0,1,2...,20} counts of upon
+y <- seq(0, 20, .1)
+theta_h <- 3.24/1000
+theta_m <- .23/1000
+prior <- 1/2
+
+n = 1000 
+
+likelihood_h <- theta_h^y*(1-theta_h)^(n-y) 
+likelihood_m <- theta_m^y*(1-theta_m)^(n-y) 
+denom <- prior*likelihood_h + (1-prior)*likelihood_m
+
+posterior <- likelihood_h*prior / denom
+
+plot(y, posterior, main="Posterior that Hamilton is the Author", xlab="# of instances", 
+     ylab="Posterior Probability")
+
+```
