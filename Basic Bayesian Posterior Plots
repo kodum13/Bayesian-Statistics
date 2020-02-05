@@ -1,0 +1,122 @@
+library(stats)
+library(bivariate)
+library(matrixStats)
+  
+# 1.12
+
+# Data and scatter plot
+x_data = c(-3.3, .1, -1.1, 2.7, 2, -.4)
+y_data = c(-2.6, -.2, -1.5, 1.5, 1.9, -.3)
+plot(x_data, y_data, xlab = "X", ylab="Y", main="Scatter Plot of Observed Data")
+
+# Evaluate using grid of rho for the correlation parameter
+corr_p <- seq(-.99, .99, 0.01)
+n <- length(corr_p)
+  
+# Using a prior of unif(-1,1)
+prior <-dunif(corr_p, -1, 1)
+  
+# Given parameters for the bivariate normal
+mu_x = 0
+mu_y = 0
+sd_x = 1
+sd_y = 1
+  
+likelihood <- list()
+
+# For each data point, calculate the probability given the bivariate normal distribution
+for (i in 1:6) {
+  x = x_data[i]
+  y = y_data[i]
+
+  like <- (1/(2*pi*sd_x*sd_y*(1-corr_p^2)^.5))*
+      exp(-(1/(2*(1-corr_p^2)))*((x-mu_x)^2/sd_x^2+(y-mu_y)^2/sd_y^2
+          -(2*corr_p*(x-mu_x)*(y-mu_y))/(sd_x*sd_y)))
+  
+  likelihood[[i]] <- data.frame(like)
+}
+
+# Likelihood calculated from the product of each points likelihood
+likelihood_per_point <- do.call(cbind, likelihood)
+likelihood_all_data <- rowProds(as.matrix(likelihood_per_point))
+
+# Probability of data points not dependent on the rho parameter as the denominator
+denom = sum(likelihood_all_data)/n
+  
+# Plots the correlation on the x-axis and the posterior density on the y-axis
+plot(NA, xlim=c(-1,1), ylim=c(0,5),xlab="Correlation rho", ylab="Posterior density")
+post <- likelihood_all_data*prior / denom
+lines(corr_p, post)
+    
+
+######################################################################################################
+
+# 1.13
+
+# Given parameters for the distribution
+a1 <- 25
+b1 <- 10
+a2 <- 10
+b2 <- 15
+
+# Create a grid of possible values
+Y  <- seq(0.001,0.999,0.001)
+
+# Prior distrbitution of rain forest and agriculture land
+d1 <- dbeta(Y,a1,b1) # rain forest
+d2 <- dbeta(Y,a2,b2) # agriculture
+# Weighted probability of land
+d3 <- 0.9*d1 + 0.1*d2
+
+# PLot the PDF of forested and deforested pixels with the marginal distribution
+# averaging over the categories
+plot(Y,d1,type="l",col=3,xlab="y",ylab="Posterior")
+lines(Y,d2,col=2)
+lines(Y,d3,col=1)
+legend("topleft",c("Rain Forest","Agriculture","Mixture"),
+       lty=1,col=3:1,bty="n")
+
+# 13 b)
+# Plot of probability a pixel is deforested given NDVI value
+posterior <- dbeta(Y,a2,b2)*.1 / (dbeta(Y,a1,b1)*.9 + dbeta(Y,a2,b2)*.1)
+plot(Y,posterior, xlab="NDVI", ylab="Posterior Prob Agriculture")
+
+# Classification threshold of 90%
+abline(.9,0,lty=2)
+
+# 13 c)
+# Pixel will be classified as deforested if the NVDI is below the nvdi_cutoff of .459
+nvdi_cutoff <- max(which(posterior>.9))
+abline(v=nvdi_cutoff/1000)
+
+################################################################################################
+# 14
+# Probability of posterior n number of visitors
+
+# Y is the number of people who bought something
+Y <- c(0, 5, 10)
+# theta is the known probability of a visitor making a purchase
+theta_list <- c(.2, .5)
+n <- seq(0,100,1)
+legend_text <- c()
+# Plot the posterior probability of n for all combinations of Y and theta
+plot(NA, xlim=c(0,20), ylim=c(0,1),xlab="n", ylab="Posterior density", main="Posterior prob of n")
+for(i in 1:6) {
+  if (i%%2==0){
+    theta = theta_list[1]
+  } else {
+    theta = theta_list[2]
+  }
+  # Prior is Poisson(5)
+  prior <- dpois(n,5)
+  # Likelihood is binomial(Y, n, theta)
+  likelihood <- dbinom(Y[i%%3+1], n, theta)
+  prob_y <- sum(prior*likelihood)
+
+  posterior <- likelihood*prior/prob_y
+  lines(posterior,col=i)
+  label <- paste("theta: ",theta, " Y: ", Y[i%%3+1], sep=" ")
+  legend_text <- c(legend_text, label)
+  print(legend_text)
+}
+legend('topright', legend= legend_text,lty=1:6, col=1:6)
