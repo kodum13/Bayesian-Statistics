@@ -1,0 +1,53 @@
+---
+title: "PPD Summary"
+date: "February 5, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Model:
+$Y|~theta \sim Binomial(n,~theta)$\
+$~theta \sim Beta(1,1)$\
+Given the data observed (Y and n) we would like to predict the outcome if we repeat the experiment Y_star = {0,1,..n}
+$Posterior\ is ~theta|Y \sim Beta(Y+1, n+1)$\
+$Posterior\ mean\ is\ theta\_hat = (Y+1)/(n+2)$
+
+```{r data}
+n <- 10
+Y <- 1
+a <- 1
+b <- 1
+A <- Y + a
+B <- n-Y+b
+```
+
+
+
+```{r estimator}
+theta_hat <- A / (A+B)
+y <- 0:n
+est <- dbinom(y, n, theta_hat)
+names(est)<-y
+round(est,2)
+```
+
+
+```{r draws}
+S <- 100000
+theta_star <- rbeta(S, A, B)
+y_star <- rbinom(S, n, theta_star)
+PPD <- table(y_star)/S
+round(PPD,2)
+```
+
+
+
+```{r plots}
+plot(y,est,col="blue",ylab="Probability")
+lines(PPD, type="p", col="red")
+legend("topright", legend=c("Estimator", "PPD"), col=c("blue","red"), lty=c(1,2), ncol=1)
+
+```
