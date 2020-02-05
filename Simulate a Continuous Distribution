@@ -1,0 +1,29 @@
+# From Brian Reich's Bayesian Statistical Methods book
+# Generate data
+ mu_true <- 1
+ x       <- rnorm(10,mu_true,1)
+
+# Define the likelihood and prior
+ like <- function(x,mu,sigma){
+   prod(dnorm(x,mu,sigma))
+ }
+ prior <- function(mu,pri_mn,pri_sd){
+  dnorm(mu,pri_mn,pri_sd)
+ }
+
+# Plot the posterior on a grid
+
+ mu     <- seq(min(x),max(x),length=100)
+ post   <- mu
+
+ for(i in 1:length(mu)){
+   post[i] <- like(x,mu[i],1)*prior(mu[i],0,10)
+ }
+ marg <- sum(post)
+ post <- post/marg
+
+ plot(mu,post,type="l",xlab="Mu",ylab="Posterior",cex.lab=1.5)
+ points(x,0*x,pch=19,col=2)
+
+ legend("topright",c("Data","Posterior"),
+        pch=c(19,NA),lty=c(NA,1),col=c(2,1),bty="n",cex=2)
